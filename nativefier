@@ -1,0 +1,72 @@
+#!/bin/bash
+
+# Installer nativefier si ce n'est pas déjà fait.
+if ! command -v nativefier &> /dev/null
+then
+    echo "Nativefier n'est pas installé. Installation en cours..."
+    npm install -g nativefier
+fi
+
+# Demander à l'utilisateur l'URL du site web qu'il veut convertir en application de bureau.
+read -p "Entrez l'URL du site web que vous voulez convertir en application de bureau : " URL
+
+# Demander à l'utilisateur le nom de l'application qu'il veut créer.
+read -p "Entrez le nom de l'application que vous voulez créer : " APP_NAME
+
+# Demander à l'utilisateur le répertoire où il veut que l'application soit créée.
+read -p "Entrez le répertoire où vous voulez que l'application soit créée : " OUTPUT_DIR
+
+# Demander à l'utilisateur s'il veut inclure le support de Widevine.
+read -p "Voulez-vous inclure le support de Widevine ? (Oui/Non) : " WIDEVINE_SUPPORT
+
+WIDEVINE_OPTION=""
+if [[ $WIDEVINE_SUPPORT =~ ^[Oo]ui$ ]]
+then
+    WIDEVINE_OPTION="--widevine"
+fi
+
+# Demander à l'utilisateur le chemin de l'icône qu'il veut utiliser.
+read -p "Entrez le chemin de l'icône que vous voulez utiliser : " ICON_PATH
+ICON_OPTION="--icon $ICON_PATH"
+
+# Demander à l'utilisateur quelle version de Electron il souhaite utiliser.
+read -p "Entrez la version de Electron que vous voulez utiliser (laissez vide pour utiliser la version par défaut) : " ELECTRON_VERSION
+
+ELECTRON_OPTION=""
+if [[ ! -z "$ELECTRON_VERSION" ]]
+then
+    ELECTRON_OPTION="--electron-version $ELECTRON_VERSION"
+fi
+
+# Afficher un récapitulatif des informations fournies par l'utilisateur.
+echo "Récapitulatif des informations fournies :"
+echo "URL du site web : $URL"
+echo "Nom de l'application : $APP_NAME"
+echo "Répertoire de sortie : $OUTPUT_DIR"
+echo "Support de Widevine : $WIDEVINE_SUPPORT"
+echo "Chemin de l'icône : $ICON_PATH"
+echo "Version de Electron : $ELECTRON_VERSION"
+
+# Demander à l'utilisateur de confirmer que les informations sont correctes.
+read -p "Les informations ci-dessus sont-elles correctes ? (Oui/Non) : " CONFIRMATION
+
+if [[ $CONFIRMATION =~ ^[Oo]ui$ ]]
+then
+    # Si l'utilisateur confirme que les informations sont correctes, exécuter la commande nativefier.
+    nativefier $WIDEVINE_OPTION $ICON_OPTION $ELECTRON_OPTION --name "$APP_NAME" "$URL" "$OUTPUT_DIR"
+
+    # Renommer le dossier de l'application pour supprimer le suffixe "-linux-x64".
+    mv "$OUTPUT_DIR/$APP_NAME-linux-x64" "$OUTPUT_DIR/$APP_NAME"
+
+    # Créer un fichier .desktop pour l'application dans le répertoire $HOME/.local/share/applications.
+    echo "[Desktop Entry]
+Type=Application
+Encoding=UTF-8
+Name=$APP_NAME
+Comment=$APP_NAME
+Exec=$OUTPUT_DIR/$APP_NAME/$APP_NAME
+Icon=$ICON_PATH
+Terminal=false" > $HOME/.local/share/applications/$APP_NAME.desktop
+else
+    echo "Opération annulée."
+fi
